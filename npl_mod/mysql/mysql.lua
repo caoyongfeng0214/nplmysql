@@ -174,6 +174,35 @@ end
 
 
 
+-- cn, env 参数是可选的
+-- 执行一条带参数的查询sql，返回查询到的第一条数据中的第一列的值，
+-- 不关闭连接，连接对象和连接环境会作为第一个数据和第二个数据返回
+-- return cn, env, val
+function mysql:_execScalar(sql, sqlParams, cn, env)
+	local cn, env, row = self:_execRow(cn, env);
+	local val = nil;
+	if(row) then
+		val = row[table.keys(row)[1]];
+	end
+	return cn, env, val;
+end
+
+
+-- cn, env 参数是可选的
+-- 执行一条带参数的查询sql，返回查询到的第一条数据中的第一列的值，
+-- 关闭连接，如果在执行时传递了cn、env参数，则不会关闭连接
+-- return val
+function mysql:execScalar(sql, sqlParams, cn, env)
+	local cn, env, val = self:_execScalar(sql, sqlParams, cn, env);
+	if(not cn) then
+		cn:close();
+		env:close();
+	end
+	return val;
+end
+
+
+
 -- 在事务中执行。
 -- 第一个参数是包含在事务中执行的语句的function，该function会接收三个参数：
 --		cn, env, returnTrans
