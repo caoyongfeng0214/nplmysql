@@ -110,10 +110,35 @@ function mysql:_execRows(sql, sqlParams, cn)
 	local cur_type = type(cur);
 	if(cur_type == 'userdata') then
 		results = {};
+		local cols = cur:getcolnames();
+		--print('FFFFFFFFFFFFFFFFFFFFFFFf');
+		--for k, v in pairs(cols) do
+		--	print(k);
+		--	print('=');
+		--	print(v);
+		--end
+		local types = cur:getcoltypes();
+		--print('TTTTTTTTTTTTTTTTTTTTT');
+		--for k, v in pairs(types) do
+		--	print(k);
+		--	print('=');
+		--	print(v);
+		--end
+		local key_type = {};
+		for k, v in pairs(cols) do
+			local ty = types[k];
+			if(ty:startsWith('number')) then
+				ty = 'number'
+			end
+			key_type[cols[k]] = ty;
+		end
 		local row = cur:fetch({}, 'a');
 		while row do
 			local tb = {};
 			for k, v in pairs(row) do
+				if(key_type[k] == 'number') then
+					v = tonumber(v);
+				end
 				tb[k] = v;
 			end
 			table.insert(results, tb);
@@ -145,14 +170,39 @@ end
 -- modestring: 'n' or 'a'，默认 'a'
 -- return cn, row
 function mysql:_execRow(sql, sqlParams, cn, modestring)
+	modestring = modestring or 'a'
 	local cur, cn = self:exec(sql, sqlParams, cn);
 	local result = nil;
 	local cur_type = type(cur);
 	if(cur_type == 'userdata') then
-		local row = cur:fetch({}, modestring or 'a');
+		local types = cur:getcoltypes();
+		local key_type = types;
+		if(modestring == 'a') then
+			-- print('aaaaaaaaaaaaaaaaaaaaaaaaaa');
+			key_type = {};
+			local cols = cur:getcolnames();
+			for k, v in pairs(cols) do
+				local ty = types[k];
+				if(ty:startsWith('number')) then
+					ty = 'number'
+				end
+				key_type[cols[k]] = ty;
+			end
+		else
+			for k, v in pairs(types) do
+				if(v:startsWith('number')) then
+					key_type[k] = 'number';
+				end
+			end
+		end
+
+		local row = cur:fetch({}, modestring);
 		if row then
 			result = {};
 			for k, v in pairs(row) do
+				if(key_type[k] == 'number') then
+					v = tonumber(v);
+				end
 				result[k] = v;
 			end
 		end
@@ -184,12 +234,12 @@ end
 -- return cn, val
 function mysql:_execScalar(sql, sqlParams, cn)
 	local cn, row = self:_execRow(sql, sqlParams, cn, 'n');
-	print(row);
-	for k, v in pairs(row) do
-		print(k);
-		print('=');
-		print(v);
-	end
+	--print(row);
+	--for k, v in pairs(row) do
+	--	print(k);
+	--	print('=');
+	--	print(v);
+	--end
 	local val = nil;
 	if(row) then
 		val = row[1];
