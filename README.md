@@ -37,18 +37,18 @@ local val = mysql:execScalar('select * from users where age > ?age', { age = 10 
 
 ```
 -- 若希望使用事务，则可使用 mysql:execInTrans()
--- 第一个参数是一个 function，会有三个参数传进来，
--- 第一个参数和第二个参数分别是 cn、env，在你自己的代码中调用相关方法执行SQL语句时，应将这两个数据作为参数传过去（如【1】处的 mysql:execNonQuery() 的最后两个参数），否则执行语句将不受事务控制。
+-- 第一个参数是一个 function，会有两个参数传进来，
+-- 第一个参数是 cn，在你自己的代码中调用相关方法执行SQL语句时，应将这个数据作为参数传过去（如【1】处的 mysql:execNonQuery() 的最后一个参数），否则执行语句将不受事务控制。
 -- 当事务逻辑处理完毕后，应该主动调用 returnTrans 来结束事务。
 --      returnTrans 是一个function，能接受两个参数，
 --          第一个参数为 boolean 值，若为 true，则会提交事务，若为 false，则会回滚事务，
 --          第二个参数是可选的，若希望将数据传递给 execInTrans() 的第二个参数，则使用此参数
 mysql:execInTrans(function(cn, env, returnTrans)
-    local num, newId = mysql:execNonQuery('insert into users(name, age) values(?name, ?age)', { name='CYF', age=10 }, cn, env);  -- 【1】
+    local num, newId = mysql:execNonQuery('insert into users(name, age) values(?name, ?age)', { name='CYF', age=10 }, cn);  -- 【1】
     if(num and newId > 100) then
         returnTrans(false);
     else
-        local num, newId = mysql:execNonQuery('insert into users(name, age) values(?name, ?age)', { name='Amanda', age=8 }, cn, env);
+        local num, newId = mysql:execNonQuery('insert into users(name, age) values(?name, ?age)', { name='Amanda', age=8 }, cn);
         if(num) then
             returnTrans(true, newId); -- 【2】
         else
@@ -58,6 +58,6 @@ mysql:execInTrans(function(cn, env, returnTrans)
 end, function(issuccess, result)
 	  -- do somthing
     -- 这里的 issuccess 是一个 boolean 值，表示事务中的所有操作是否均已成功执行
-    -- result 是传给 returnTrans 的第二个参数，如 【2】 处的 newId
+    -- result 是传给 returnTrans 的第二个参数，即【2】处的 newId
 end);
 ```
