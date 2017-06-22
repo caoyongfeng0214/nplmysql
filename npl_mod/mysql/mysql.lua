@@ -214,9 +214,9 @@ end
 
 
 -- 在事务中执行。
--- 第一个参数是包含在事务中执行的语句的function，该function会接收三个参数：
+-- 第一个参数是包含在事务中执行的语句的function，该function会接收两个参数：
 --		cn, returnTrans
---		第三个参数 returnTrans 是一个function，当数据操作完毕后，需要调此function通知事务程序已经执行完毕事务了，
+--		第二个参数 returnTrans 是一个function，当数据操作完毕后，需要调此function通知事务程序已经执行完毕事务了，
 --			此function可接收两个参数，
 --				第一个参数为true或false，当为true时，事务将提交，否则回滚。
 --				第二个参数是可选的，如果希望在回调中
@@ -231,7 +231,9 @@ function mysql:execInTrans(execFun, callbackFun)
 		end
 		cn:close();
 		cn.env:close();
-		callbackFun(issuccess, result);
+		if(callbackFun) then
+			callbackFun(issuccess, result);
+		end
 	end);
 	
 	return cn;
