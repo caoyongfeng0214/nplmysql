@@ -36,13 +36,15 @@ end
 function mysql:connect()
 	local env = driver.mysql();
 	local cn = env:connect(self.db, self.user, self.pwd, self.host, self.port);
+	rawset(cn.__index, 'env', env);
+	cn:execute('SET NAMES UTF8');
 	return cn, env;
 end
 
 
-function mysql:exec(sql, sqlParams, cn, env)
-	if(not cn or not env) then
-		cn, env = self:connect();
+function mysql:exec(sql, sqlParams, cn)
+	if(not cn) then
+		cn = self:connect();
 	end
 	
 	if(sqlParams) then
@@ -64,46 +66,46 @@ function mysql:exec(sql, sqlParams, cn, env)
 		end
 	end
 	
-	return cn:execute(sql), cn, env;
+	return cn:execute(sql), cn, cn.env;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的非查询sql，返回受影响的行数和新插入数据的id（如果有）,
--- 不关闭连接，连接对象和连接环境会作为第一个数据和第二个数据返回
--- return cn, env, cnt, lastId
-function mysql:_execNonQuery(sql, sqlParams, cn, env)
-	local cur, cn, env = self:exec(sql, sqlParams, cn, env);
+-- 不关闭连接，连接对象会作为第一个数据返回
+-- return cn, cnt, lastId
+function mysql:_execNonQuery(sql, sqlParams, cn)
+	local cur, cn = self:exec(sql, sqlParams, cn);
 	local cur_type = type(cur);
 	local lastId = nil;
 	if(cur_type == 'number') then
 		lastId = cn:getlastautoid();
 	end
-	return cn, env, cur, lastId;
+	return cn, cur, lastId;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的非查询sql，返回受影响的行数和新插入数据的id
--- 关闭连接，如果在执行时传递了cn、env参数，则不会关闭连接
+-- 关闭连接，如果在执行时传递了cn参数，则不会关闭连接
 -- return cnt, lastId
 -- 若失败，cnt为nil
-function mysql:execNonQuery(sql, sqlParams, cn, env)
-	local cn, env, cnt, lastId = self:_execNonQuery(sql, sqlParams, cn, env);
+function mysql:execNonQuery(sql, sqlParams, cn)
+	local cn, cnt, lastId = self:_execNonQuery(sql, sqlParams, cn);
 	if(not cn) then
 		cn:close();
-		env:close();
+		cn.env:close();
 	end
 	return cnt, lastId;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的查询sql，
--- 不关闭连接，连接对象和连接环境会作为第一个数据和第二个数据返回
--- return cn, env, rows
-function mysql:_execRows(sql, sqlParams, cn, env)
-	local cur, cn, env = self:exec(sql, sqlParams, cn, env);
+-- 不关闭连接，连接对象会作为第一个数据返回
+-- return cn, rows
+function mysql:_execRows(sql, sqlParams, cn)
+	local cur, cn = self:exec(sql, sqlParams, cn);
 	local results = nil;
 	local cur_type = type(cur);
 	if(cur_type == 'userdata') then
@@ -119,34 +121,35 @@ function mysql:_execRows(sql, sqlParams, cn, env)
 		end
 		cur:close();
 	end
-	return cn, env, results;
+	return cn, results;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的查询sql，
--- 关闭连接，如果在执行execRows()时传递了cn、env参数，则不会关闭连接
+-- 关闭连接，如果在执行execRows()时传递了cn参数，则不会关闭连接
 -- return rows
-function mysql:execRows(sql, sqlParams, cn, env)
-	local cn, env, rows = self:_execRows(sql, sqlParams, cn, env);
+function mysql:execRows(sql, sqlParams, cn)
+	local cn, rows = self:_execRows(sql, sqlParams, cn);
 	if(not cn) then
 		cn:close();
-		env:close();
+		cn.env:close();
 	end
 	return rows;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的查询sql，返回查询到的第一条数据，
--- 不关闭连接，连接对象和连接环境会作为第一个数据和第二个数据返回
--- return cn, env, row
-function mysql:_execRow(sql, sqlParams, cn, env)
-	local cur, cn, env = self:exec(sql, sqlParams, cn, env);
+-- 不关闭连接，连接对象会作为第一个数返回
+-- modestring: 'n' or 'a'，默认 'a'
+-- return cn, row
+function mysql:_execRow(sql, sqlParams, cn, modestring)
+	local cur, cn = self:exec(sql, sqlParams, cn);
 	local result = nil;
 	local cur_type = type(cur);
 	if(cur_type == 'userdata') then
-		local row = cur:fetch({}, 'a');
+		local row = cur:fetch({}, modestring or 'a');
 		if row then
 			result = {};
 			for k, v in pairs(row) do
@@ -155,48 +158,55 @@ function mysql:_execRow(sql, sqlParams, cn, env)
 		end
 		cur:close();
 	end
-	return cn, env, result;
+	return cn, result;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的查询sql，返回查询到的第一条数据，
--- 关闭连接，如果在执行时传递了cn、env参数，则不会关闭连接
+-- 关闭连接，如果在执行时传递了cn参数，则不会关闭连接
+-- modestring: 'n' or 'a'，默认 'a'
 -- return row
-function mysql:execRow(sql, sqlParams, cn, env)
-	local cn, env, result = self:_execRow(sql, sqlParams, cn, env);
+function mysql:execRow(sql, sqlParams, cn, modestring)
+	local cn, result = self:_execRow(sql, sqlParams, cn, modestring);
 	if(not cn) then
 		cn:close();
-		env:close();
+		cn.env:close();
 	end
 	return result;
 end
 
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的查询sql，返回查询到的第一条数据中的第一列的值，
--- 不关闭连接，连接对象和连接环境会作为第一个数据和第二个数据返回
--- return cn, env, val
-function mysql:_execScalar(sql, sqlParams, cn, env)
-	local cn, env, row = self:_execRow(cn, env);
+-- 不关闭连接，连接对象会作为第一个数据返回
+-- return cn, val
+function mysql:_execScalar(sql, sqlParams, cn)
+	local cn, row = self:_execRow(sql, sqlParams, cn, 'n');
+	print(row);
+	for k, v in pairs(row) do
+		print(k);
+		print('=');
+		print(v);
+	end
 	local val = nil;
 	if(row) then
-		val = row[table.keys(row)[1]];
+		val = row[1];
 	end
-	return cn, env, val;
+	return cn, val;
 end
 
 
--- cn, env 参数是可选的
+-- cn 参数是可选的
 -- 执行一条带参数的查询sql，返回查询到的第一条数据中的第一列的值，
--- 关闭连接，如果在执行时传递了cn、env参数，则不会关闭连接
+-- 关闭连接，如果在执行时传递了cn参数，则不会关闭连接
 -- return val
-function mysql:execScalar(sql, sqlParams, cn, env)
-	local cn, env, val = self:_execScalar(sql, sqlParams, cn, env);
+function mysql:execScalar(sql, sqlParams, cn)
+	local cn, val = self:_execScalar(sql, sqlParams, cn);
 	if(not cn) then
 		cn:close();
-		env:close();
+		cn.env:close();
 	end
 	return val;
 end
@@ -205,26 +215,26 @@ end
 
 -- 在事务中执行。
 -- 第一个参数是包含在事务中执行的语句的function，该function会接收三个参数：
---		cn, env, returnTrans
+--		cn, returnTrans
 --		第三个参数 returnTrans 是一个function，当数据操作完毕后，需要调此function通知事务程序已经执行完毕事务了，
 --			此function可接收两个参数，
 --				第一个参数为true或false，当为true时，事务将提交，否则回滚。
 --				第二个参数是可选的，如果希望在回调中
 function mysql:execInTrans(execFun, callbackFun)
-	local cn, env = self:connect();
+	local cn = self:connect();
 	cn:setautocommit(false);
-	execFun(cn, env, function(issuccess, result)
+	execFun(cn, function(issuccess, result)
 		if(issuccess) then
 			cn:commit();
 		else
 			cn:rollback();
 		end
 		cn:close();
-		env:close();
+		cn.env:close();
 		callbackFun(issuccess, result);
 	end);
 	
-	return cn, env;
+	return cn;
 end
 
 
