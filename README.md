@@ -7,8 +7,8 @@
 ```
 local mysql = NPL.load('mysql'):new({
     user = 'root',
-	  pwd = '00000',
-	  db = 'test'
+    pwd = '00000',
+    db = 'test'
 });
 
 -- execNonQuery() 用来执行一个“非查询SQL”
