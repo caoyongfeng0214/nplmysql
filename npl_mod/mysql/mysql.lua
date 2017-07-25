@@ -21,11 +21,11 @@ local mysql = {};
 ]]
 function mysql:new(o)
 	o = o or {};
-	if(not host) then
-		host = '127.0.0.1';
+	if(not o.host) then
+		o.host = '127.0.0.1';
 	end
-	if(not port) then
-		port = 3306;
+	if(not o.port) then
+		o.port = 3306;
 	end
 	setmetatable(o, self);
 	self.__index = self;
