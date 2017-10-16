@@ -49,7 +49,7 @@ function mysql:exec(sql, sqlParams, cn)
 	
 	if(sqlParams) then
 		for k, v in pairs(sqlParams) do
-			sql = sql:replace('%?(%w+)', function(w)
+			sql = sql:replace('%?([%w_]+)', function(w)
 				local v = sqlParams[w];
 				local ty = type(v);
 				if(ty == 'boolean') then
@@ -65,6 +65,8 @@ function mysql:exec(sql, sqlParams, cn)
 			end);
 		end
 	end
+
+	-- print(sql);
 	
 	return cn:execute(sql), cn, cn.env;
 end
@@ -75,13 +77,13 @@ end
 -- 不关闭连接，连接对象会作为第一个数据返回
 -- return cn, cnt, lastId
 function mysql:_execNonQuery(sql, sqlParams, cn)
-	local cur, cn = self:exec(sql, sqlParams, cn);
+	local cur, cn2 = self:exec(sql, sqlParams, cn);
 	local cur_type = type(cur);
 	local lastId = nil;
 	if(cur_type == 'number') then
 		lastId = cn:getlastautoid();
 	end
-	return cn, cur, lastId;
+	return cn2, cur, lastId;
 end
 
 
@@ -91,10 +93,10 @@ end
 -- return cnt, lastId
 -- 若失败，cnt为nil
 function mysql:execNonQuery(sql, sqlParams, cn)
-	local cn, cnt, lastId = self:_execNonQuery(sql, sqlParams, cn);
+	local cn2, cnt, lastId = self:_execNonQuery(sql, sqlParams, cn);
 	if(not cn) then
-		cn:close();
-		cn.env:close();
+		cn2:close();
+		cn2.env:close();
 	end
 	return cnt, lastId;
 end
@@ -105,7 +107,7 @@ end
 -- 不关闭连接，连接对象会作为第一个数据返回
 -- return cn, rows
 function mysql:_execRows(sql, sqlParams, cn)
-	local cur, cn = self:exec(sql, sqlParams, cn);
+	local cur, cn2 = self:exec(sql, sqlParams, cn);
 	local results = nil;
 	local cur_type = type(cur);
 	if(cur_type == 'userdata') then
@@ -146,7 +148,7 @@ function mysql:_execRows(sql, sqlParams, cn)
 		end
 		cur:close();
 	end
-	return cn, results;
+	return cn2, results;
 end
 
 
@@ -155,10 +157,10 @@ end
 -- 关闭连接，如果在执行execRows()时传递了cn参数，则不会关闭连接
 -- return rows
 function mysql:execRows(sql, sqlParams, cn)
-	local cn, rows = self:_execRows(sql, sqlParams, cn);
+	local cn2, rows = self:_execRows(sql, sqlParams, cn);
 	if(not cn) then
-		cn:close();
-		cn.env:close();
+		cn2:close();
+		cn2.env:close();
 	end
 	return rows;
 end
@@ -171,7 +173,7 @@ end
 -- return cn, row
 function mysql:_execRow(sql, sqlParams, cn, modestring)
 	modestring = modestring or 'a'
-	local cur, cn = self:exec(sql, sqlParams, cn);
+	local cur, cn2 = self:exec(sql, sqlParams, cn);
 	local result = nil;
 	local cur_type = type(cur);
 	if(cur_type == 'userdata') then
@@ -208,7 +210,7 @@ function mysql:_execRow(sql, sqlParams, cn, modestring)
 		end
 		cur:close();
 	end
-	return cn, result;
+	return cn2, result;
 end
 
 
@@ -218,10 +220,10 @@ end
 -- modestring: 'n' or 'a'，默认 'a'
 -- return row
 function mysql:execRow(sql, sqlParams, cn, modestring)
-	local cn, result = self:_execRow(sql, sqlParams, cn, modestring);
+	local cn2, result = self:_execRow(sql, sqlParams, cn, modestring);
 	if(not cn) then
-		cn:close();
-		cn.env:close();
+		cn2:close();
+		cn2.env:close();
 	end
 	return result;
 end
@@ -233,7 +235,7 @@ end
 -- 不关闭连接，连接对象会作为第一个数据返回
 -- return cn, val
 function mysql:_execScalar(sql, sqlParams, cn)
-	local cn, row = self:_execRow(sql, sqlParams, cn, 'n');
+	local cn2, row = self:_execRow(sql, sqlParams, cn, 'n');
 	--print(row);
 	--for k, v in pairs(row) do
 	--	print(k);
@@ -244,7 +246,7 @@ function mysql:_execScalar(sql, sqlParams, cn)
 	if(row) then
 		val = row[1];
 	end
-	return cn, val;
+	return cn2, val;
 end
 
 
@@ -253,10 +255,10 @@ end
 -- 关闭连接，如果在执行时传递了cn参数，则不会关闭连接
 -- return val
 function mysql:execScalar(sql, sqlParams, cn)
-	local cn, val = self:_execScalar(sql, sqlParams, cn);
+	local cn2, val = self:_execScalar(sql, sqlParams, cn);
 	if(not cn) then
-		cn:close();
-		cn.env:close();
+		cn2:close();
+		cn2.env:close();
 	end
 	return val;
 end
